@@ -64,31 +64,31 @@ def main():
 
     # Initialize the browser
     driver = ChromiumPage(addr_or_opts=options)
-    try:
-        logging.info('Navigating to the demo page.')
-        driver.get('https://nopecha.com/demo/cloudflare')
+    # try:
+    logging.info('Navigating to the demo page.')
+    driver.get('https://onprover.orochi.network')
 
-        # Where the bypass starts
-        logging.info('Starting Cloudflare bypass.')
-        cf_bypasser = CloudflareBypasser(driver)
+    # Where the bypass starts
+    logging.info('Starting Cloudflare bypass.')
+    cf_bypasser = CloudflareBypasser(driver)
 
-        # If you are solving an in-page captcha (like the one here: https://seleniumbase.io/apps/turnstile), use cf_bypasser.click_verification_button() directly instead of cf_bypasser.bypass().
-        # It will automatically locate the button and click it. Do your own check if needed.
+    # If you are solving an in-page captcha (like the one here: https://seleniumbase.io/apps/turnstile), use cf_bypasser.click_verification_button() directly instead of cf_bypasser.bypass().
+    # It will automatically locate the button and click it. Do your own check if needed.
 
-        cf_bypasser.bypass()
+    cf_bypasser.bypass_pic()
 
-        logging.info("Enjoy the content!")
-        logging.info("Title of the page: %s", driver.title)
+    logging.info("Enjoy the content!")
+    logging.info("Title of the page: %s", driver.title)
 
-        # Sleep for a while to let the user see the result if needed
-        time.sleep(5)
-    except Exception as e:
-        logging.error("An error occurred: %s", str(e))
-    finally:
-        logging.info('Closing the browser.')
-        driver.quit()
-        if isHeadless:
-            display.stop()
+    # Sleep for a while to let the user see the result if needed
+    time.sleep(5)
+    # except Exception as e:
+    #     logging.error("An error occurred: %s", str(e))
+    # finally:
+    #     logging.info('Closing the browser.')
+    #     driver.quit()
+    #     if isHeadless:
+    #         display.stop()
 
 if __name__ == '__main__':
     main()
