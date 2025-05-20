@@ -1,0 +1,165 @@
+// ==UserScript==
+// @name         Orochi Prover 自动刷新与点击（勾选框优化）
+// @namespace    http://tampermonkey.net/
+// @version      1.6
+// @description  每隔30分钟刷新页面；自动通过Cloudflare勾选框验证（优化检测）；prover按钮出现后等待10秒点击；每隔1分钟检查是否在挖矿，若未在挖矿则再次点击prover。
+// @author       BigChacha
+// @match        https://onprover.orochi.network/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    console.log('[脚本启动] Orochi Prover 自动化脚本 v1.6 已启动，针对Cloudflare勾选框优化');
+
+    // —— 1. 每隔30分钟自动刷新页面 ——
+    setInterval(() => {
+        try {
+            console.log('[自动刷新] 30分钟已到，重新加载页面');
+            location.reload();
+        } catch (error) {
+            console.error('[自动刷新] 刷新页面时发生错误:', error);
+        }
+    }, 30 * 60 * 1000000);
+
+    // —— 2. 页面 load 完成后 ——
+    window.addEventListener('load', () => {
+        console.log('[页面加载] 页面加载完成，开始初始化自动化任务');
+
+        // 2.1 自动勾选 Cloudflare 验证框（针对勾选框优化）
+        function checkAndClickCloudflareCheckbox() {
+            try {
+                // 尝试多种选择器匹配 Cloudflare 勾选框
+                const mainContent = document.querySelector('body > div.main-wrapper > div.main-content');
+const shadowRoot = mainContent.shadowRoot;
+              console.log(1)
+              console.log(shadowRoot)
+              console.log(2)
+                const cfCheckbox = document.querySelector('input[type="checkbox"]') ||
+                                   document.querySelector('[id*="checkbox"]') ||
+                                   document.querySelector('[class*="checkbox"]') ||
+                                   document.querySelector('[id*="challenge"] input') ||
+                                   document.querySelector('[class*="challenge"] input') ||
+                                   document.querySelector('[id*="turnstile"] input') ||
+                                   document.querySelector('[class*="turnstile"] input')||
+                                    document.querySelector('#checkboxId');;
+                if (cfCheckbox) {
+                    console.log('[Cloudflare] 检测到勾选框，尝试点击');
+                    // 模拟用户点击（增强版）
+                    const clickEvent = new MouseEvent('click', {
+                        view: window,
+                        bubbles: true,
+                        cancelable: true,
+                        clientX: cfCheckbox.getBoundingClientRect().left + 10,
+                        clientY: cfCheckbox.getBoundingClientRect().top + 10
+                    });
+                    cfCheckbox.dispatchEvent(clickEvent);
+                    console.log('[Cloudflare] 已尝试点击勾选框');
+                    // 额外触发一次普通点击，以防万一
+                    setTimeout(() => {
+                        try {
+                            cfCheckbox.click();
+                            console.log('[Cloudflare] 已额外触发一次普通点击');
+                        } catch (err) {
+                            console.error('[Cloudflare] 额外点击失败:', err);
+                        }
+                    }, 500);
+                    return true;
+                } else {
+                    console.log('[Cloudflare] 未检测到勾选框，可能尚未加载');
+                    return false;
+                }
+            } catch (error) {
+                console.error('[Cloudflare] 处理勾选框验证时发生错误:', error);
+                return false;
+            }
+        }
+
+        // 初次检查 Cloudflare 勾选框
+        checkAndClickCloudflareCheckbox();
+
+        // 使用定时器持续检查 Cloudflare 勾选框（每3秒检查一次，持续2分钟）
+        let cfCheckCount = 0;
+        const cfCheckInterval = setInterval(() => {
+            cfCheckCount++;
+            if (checkAndClickCloudflareCheckbox() || cfCheckCount >= 40) { // 最多检查40次（2分钟）
+                clearInterval(cfCheckInterval);
+                console.log('[Cloudflare] 停止持续检查勾选框');
+            } else {
+                console.log('[Cloudflare] 继续检查勾选框...');
+            }
+        }, 3000);
+
+        // 使用 MutationObserver 动态监控 Cloudflare 勾选框
+        try {
+            const cfObserver = new MutationObserver((mutations, observer) => {
+                if (checkAndClickCloudflareCheckbox()) {
+                    observer.disconnect();
+                    console.log('[Cloudflare] 动态监控已检测到勾选框并点击，停止观察');
+                }
+            });
+            cfObserver.observe(document.body, { childList: true, subtree: true });
+            // 5分钟后停止观察，避免长期占用资源
+            setTimeout(() => {
+                cfObserver.disconnect();
+                console.log('[Cloudflare] 动态监控超时，停止观察');
+            }, 5 * 60 * 1000);
+        } catch (error) {
+            console.error('[Cloudflare] 初始化动态监控时发生错误:', error);
+        }
+
+        // 2.2 监控首次出现的 “prover” 按钮，10秒后点击开始挖矿
+        try {
+            const proverObserver = new MutationObserver((mutations, observer) => {
+                try {
+                    const proverBtn = Array.from(document.querySelectorAll('button')).find(btn =>
+                        btn.innerText.trim().toLowerCase() === 'prove'
+                    );
+                    if (proverBtn) {
+                        console.log('[挖矿] 检测到 prover 按钮，10秒后开始点击');
+                        setTimeout(() => {
+                            try {
+                                proverBtn.click();
+                                console.log('[挖矿] 已点击 prover');
+                            } catch (error) {
+                                console.error('[挖矿] 点击 prover 按钮时发生错误:', error);
+                            }
+                        }, 10 * 1000);
+                        observer.disconnect(); // 首次检测到后断开观察，避免重复触发
+                    }
+                } catch (error) {
+                    console.error('[MutationObserver] 处理按钮检测时发生错误:', error);
+                }
+            });
+            proverObserver.observe(document.body, { childList: true, subtree: true });
+        } catch (error) {
+            console.error('[MutationObserver] 初始化观察者时发生错误:', error);
+        }
+
+        // —— 3. 每隔1分钟检查一次挖矿状态 ——
+        setInterval(() => {
+            try {
+                // 查看页面上是否存在 “Stop proving” 按钮
+                const isMining = !!Array.from(document.querySelectorAll('button'))
+                    .find(btn => btn.innerText.trim().toLowerCase() === 'stop proving');
+                if (!isMining) {
+                    // 如果不在挖矿，则尝试点击 prover 按钮重新开始
+                    const proverBtn = Array.from(document.querySelectorAll('button')).find(btn =>
+                        btn.innerText.trim().toLowerCase() === 'prove'
+                    );
+                    if (proverBtn) {
+                        console.log('[状态检测] 未发现 Stop proving，重新点击 prover');
+                        proverBtn.click();
+                    } else {
+                        console.log('[状态检测] 未发现 prover 按钮，可能页面未加载完成');
+                    }
+                } else {
+                    console.log('[状态检测] 正在挖矿，状态正常');
+                }
+            } catch (error) {
+                console.error('[状态检测] 检查挖矿状态时发生错误:', error);
+            }
+        }, 60 * 1000);
+    });
+})();
